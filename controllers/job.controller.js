@@ -356,4 +356,21 @@ exports.applyJob = async (req, res) => {
   }
 };
 
+exports.getHighestPaidJobs = async (req, res) => {
+  try {
+    const jobs = await getHighestPaidJobsService();
+
+    res.status(200).json({
+      status: "success",
+      data: jobs,
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: "can't get the data",
+      error: error.message,
+    });
+  }
+};
+
 
