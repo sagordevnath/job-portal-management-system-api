@@ -1,13 +1,48 @@
+const { findOne } = require("../models/Company");
 const {
   signupService,
   findUserByEmail,
   findUserByToken,
+  findUserById,
+  allCandidatesService,
+  allHiringManagersService,
+  candidateByIdService,
 } = require("../services/user.service");
 const { sendMailWithGmail } = require("../utils/email");
 const { generateToken } = require("../utils/token");
 
 exports.signup = async (req, res) => {
   try {
+    if (req.body.role === "Admin") {
+      return res.status(403).json({
+        status: "fail",
+        error:
+          "You are not allowed to create admin account. Please contact the admin",
+      });
+    }
+    if (req.body.role === "Hiring-Manager") {
+      return res.status(403).json({
+        status: "fail",
+        error:
+          "You are not allowed to create hiring manager account. Please contact the admin",
+      });
+    }
+
+    if (req.body.status === "active") {
+      return res.status(403).json({
+        status: "fail",
+        error:
+          "Please don't provide status. It will be automatically set to inactive. You will be able to activate your account by clicking the link sent to your email",
+      });
+    }
+
+    if (req.body.status === "blocked") {
+      return res.status(403).json({
+        status: "fail",
+        error: "You cannot create a blocked account.",
+      });
+    }
+
     const user = await signupService(req.body);
 
     const token = user.generateConfirmationToken();
@@ -29,7 +64,6 @@ exports.signup = async (req, res) => {
       message: "Successfully signed up",
     });
   } catch (error) {
-    console.log(error);
     res.status(500).json({
       status: "fail",
       error,
@@ -72,12 +106,10 @@ exports.login = async (req, res) => {
       });
     }
 
-
     const { password: pwd, ...others } = user.toObject();
     const token = generateToken(others);
 
-
-    res.status(200).json({ 
+    res.status(200).json({
       status: "success",
       message: "Successfully logged in",
       data: {
@@ -86,7 +118,6 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
     res.status(500).json({
       status: "fail",
       error,
@@ -143,7 +174,127 @@ exports.confirmEmail = async (req, res) => {
       message: "Successfully activated your account.",
     });
   } catch (error) {
-    console.log(error);
+    res.status(500).json({
+      status: "fail",
+      error,
+    });
+  }
+};
+
+exports.promoteUserRole = async (req, res) => { 
+  try {
+    const { id } = req.params;
+
+    const user = await findUserById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        error: "No user found",
+      });
+    }
+
+    if(req.user.email === user.email){
+      return res.status(403).json({
+        status: "fail",
+        error: "You cannot demote yourself to Candidate / Hiring-Manager",
+      });
+    } 
+
+    if (req.body.role === "Admin" && user.role === "Admin") {
+      return res.status(403).json({
+        status: "fail",
+        error: "User is already an admin",
+      });
+    }
+
+    if (req.body.role === "Hiring-Manager" && user.role === "Hiring-Manager") {
+      return res.status(403).json({
+        status: "fail",
+        error: "User is already a hiring manager",
+      });
+    }
+
+    if (req.body.role === "Candidate" && user.role === "Candidate") {
+      return res.status(403).json({
+        status: "fail",
+        error: "User is already a candidate",
+      });
+    }
+
+    if (req.body.role === "Admin" || req.body.role === "Hiring-Manager" || req.body.role === "Candidate") {
+      user.role = req.body.role;
+
+      await user.save({ validateBeforeSave: false });
+
+      res.status(200).json({
+        status: "success",
+        message: `Successfully promoted user to ${req.body.role}`,
+      });
+    }else{
+      res.status(403).json({
+        status: "fail",
+        error:`You are not allowed to promote user to ${req.body.role}. Possible roles are Admin, Hiring-Manager & Candidate`,
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      status: "fail",
+      error,
+    });
+  }
+};
+
+exports.getCandidates = async (req, res) => {
+  try {
+    const candidates = await allCandidatesService();
+
+    res.status(200).json({
+      status: "success",
+      data: candidates,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "fail",
+      error,
+    });
+  }
+}
+
+exports.getCandidateById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const candidate = await candidateByIdService(id);
+
+    if (!candidate) {
+      return res.status(404).json({
+        status: "fail",
+        error: "No candidate found",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: candidate,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "fail",
+      error,
+    });
+  }
+}
+
+exports.getManagers = async (req, res) => {
+  try {
+    const hiringManagers = await allHiringManagersService();
+
+    res.status(200).json({
+      status: "success",
+      data: hiringManagers,
+    });
+  } catch (error) {
     res.status(500).json({
       status: "fail",
       error,

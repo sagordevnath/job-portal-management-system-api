@@ -103,11 +103,12 @@ exports.getJobByIdService = async (id) => {
   return job;
 };
 
-exports.applyJobService = async (jobId, userId) => {
+exports.applyJobService = async (jobId, userId, resumeLink) => {
   const job = await Job.findOne({ _id: jobId });
   const application = await Application.create({
     job: jobId,
     applicant: userId,
+    resume: resumeLink,
   });
   job.applications.push(application._id);
   await job.save({
@@ -140,4 +141,40 @@ exports.applyJobService = async (jobId, userId) => {
     });
 
   return result;
+};
+
+exports.getHighestPaidJobsService = async () => {
+  //top 10 highest paid jobs which has not crossed deadline
+  const jobs = await Job.find({ deadline: { $gte: Date.now() } })
+    .sort({ salary: -1 })
+    .limit(10)
+    .select("-applications")
+    .populate({
+      path: "companyInfo",
+      select: "-jobPosts",
+      populate: {
+        path: "managerName",
+        select:
+          "-password -__v -createdAt -updatedAt -role -status -appliedJobs",
+      },
+    });
+  return jobs;
+};
+
+exports.getMostAppliedJobsService = async () => {
+  //top 5 most applied jobs which has not crossed deadline
+  const jobs = await Job.find({ deadline: { $gte: Date.now() } })
+    .sort({ applications: -1 })
+    .limit(5)
+    .select("-applications")
+    .populate({
+      path: "companyInfo",
+      select: "-jobPosts",
+      populate: {
+        path: "managerName",
+        select:
+          "-password -__v -createdAt -updatedAt -role -status -appliedJobs",
+      },
+    });
+  return jobs;
 };
