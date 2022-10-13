@@ -3,7 +3,7 @@ const fs = require("fs");
 
 exports.authenticateGoogle = () => {
   const auth = new google.auth.GoogleAuth({
-    keyFile: `${__dirname}/../jobs-portal-saminravi99-42d2fb0d6571.json`,
+    keyFile: `${__dirname}/../jobs-portal-sagordevnath.json`,
     scopes: "https://www.googleapis.com/auth/drive",
   });
   return auth;
@@ -39,7 +39,3 @@ exports.deleteFile = (filePath) => {
   });
 };
 
-// 1_nWc3f3sMIsmne1nnqEwdjMk6s_QUR_c
-// 1_nWc3f3sMIsmne1nnqEwdjMk6s_QUR_c
-// resume.data.id
-// https://drive.google.com/file/d/${resume.data.id}/view
