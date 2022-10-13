@@ -159,3 +159,53 @@ exports.getJobByManagerTokenJobId = async (req, res) => {
   }
 };
 
+exports.updateJob = async (req, res) => {
+  //check user token to find manager's company id. if it doesnt match with req.body.companyInfo then return
+  try {
+    const { email } = req.user;
+    const manager = await User.findOne({ email });
+    //get the company in which this manager is assigned
+    const company = await Company.findOne({
+      managerName: manager._id,
+    }).populate({
+      path: "jobPosts",
+    });
+
+    //get the id of the job from jobPosts array of that company that matches the req.params is
+    const job = company.jobPosts.find(
+      (job) => job._id.toString() == req.params.id.toString()
+    );
+
+    if (!job) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You are not authorized to update this job",
+      });
+    }
+
+    // if job id doesnt match the id of req.params then return
+    // if(job._id != req.params.id){
+    //   return res.status(400).json({
+    //     status: "fail",
+    //     message: "You are not authorized to update this job",
+    //   });
+    // }
+
+    const { id } = req.params;
+    const result = await updateJobService(id, req.body);
+
+    res.status(200).json({
+      status: "success",
+      message: "Job updated successfully!",
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: " Data is not updated ",
+      error: error.message,
+    });
+  }
+};
+
+
+
