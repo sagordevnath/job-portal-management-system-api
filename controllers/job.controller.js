@@ -58,3 +58,40 @@ exports.createJob = async (req, res, next) => {
     });
   }
 };
+
+exports.getJobsByManagerToken = async (req, res) => {
+  try {
+    const { email } = req.user;
+    //get user by this email from User model
+    const user = await User.findOne({ email }).select(
+      "-password -__v -createdAt -updatedAt -role -status -appliedJobs"
+    );
+    //get company by this user from Company model inside managerName field
+    const company = await Company.findOne({ managerName: user._id });
+
+    //get all jobs
+    const jobs = await Job.find({}).select("-applications").populate({
+      path: "companyInfo",
+      select: "-jobPosts",
+    });
+    //find the jobs by company id
+    const jobsByCompany = jobs.filter((job) => {
+      return job.companyInfo._id.toString() == company._id.toString();
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        managerInfo: user,
+        jobs: jobsByCompany,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: "can't get the data",
+      error: error.message,
+    });
+  }
+};
+
