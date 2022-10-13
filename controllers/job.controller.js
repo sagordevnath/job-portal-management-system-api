@@ -281,5 +281,79 @@ exports.getJobById = async (req, res) => {
   }
 };
 
+exports.applyJob = async (req, res) => {
+  try {
+    const { email } = req.user;
+    const user = await User.findOne({ email }).select(
+      "-password -__v -createdAt -updatedAt -role -status -appliedJobs"
+    );
+
+    const { id } = req.params;
+
+    const job = await Job.findById(id);
+
+    if (!job) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Job not found",
+      });
+    }
+
+    //check if application date is less or equal to deadline date
+    const today = new Date();
+    const deadline = new Date(job.deadline);
+    if (today > deadline) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Application deadline is over. try next time",
+      });
+    }
+
+    //check if user has already applied for this job
+    // get all the applications that have been applied for this job and find if the user has already applied
+    const applications = await Application.find({ job: job._id });
+    const isApplied = applications.find(
+      (application) =>
+        application.applicant._id.toString() == user._id.toString()
+    );
+
+    if (isApplied) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You have already applied for this job",
+      });
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        status: "fail",
+        message: "Please upload your resume",
+      });
+      return;
+    }
+
+    const auth = googleDriveService.authenticateGoogle();
+    const resume = await googleDriveService.uploadToGoogleDrive(req.file, auth);
+    googleDriveService.deleteFile(req.file.path);
+
+    const resumeLink = `https://drive.google.com/file/d/${resume.data.id}/view`;
+
+    const result = await applyJobService(id, user._id, resumeLink);
+
+    res.status(200).json({
+      status: "success",
+      message: "Job applied successfully!",
+      result: {
+        data: result,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: "can't get the data",
+      error: error.message,
+    });
+  }
+};
 
 
